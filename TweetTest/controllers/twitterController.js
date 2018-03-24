@@ -3,6 +3,7 @@ const moment = require('moment');
 const request = require('request');
 const D3Node = require('d3-node')
 const fs = require('fs');
+const mongoController = require ('./mongoController');
 
 var client = new Twitter({
   consumer_key: process.env.TWITTER_CONSUMER_KEY,
@@ -63,13 +64,18 @@ exports.getBulkTweets = async(req,res) =>
 					data.push(tweet);
 		  		}
 
+
+
 		  		//Write to a JSON file (this is where you would push to database)
+				console.log("This function doesn't get called?");
+
 		  		fs.appendFile('../data.json', JSON.stringify(data),function(err)
 		  		{
 	    			if(err) 
 	    				throw err;
 	    			else
 	    			{
+
 	    				tweetCount += data.length 
 	    				reptitionsCompleted += 1;
 	    				console.log(`Tweet Count: ${tweetCount} \nReptition: ${reptitionsCompleted}`)
@@ -88,6 +94,7 @@ exports.getBulkTweets = async(req,res) =>
 		  	}
 		});
 	}
+
 	getNextBatch(100000000000000000000000000000000000000000000000000000000000000);
 }
 
@@ -108,7 +115,7 @@ exports.getTweets = async(req,res) =>
 	  	{
 	  		for(tweet in tweets.statuses)
 	  		{
-	  			tweets.statuses[tweet].created_at = moment(tweets.statuses[tweet].created_at).startOf('hour').fromNow(); 
+	  			//tweets.statuses[tweet].created_at = moment(tweets.statuses[tweet].created_at).startOf('hour').fromNow();
 	  		}
 
 	  		let wordCount = {};
@@ -130,10 +137,32 @@ exports.getTweets = async(req,res) =>
 	  				}
 	  			}
 	  		}
-	  		
-	  		fs.writeFile('../data.json', JSON.stringify(tweets.statuses),function(err){
-    			if(err) throw err;
-  			})
+            console.log("Ready to write to DB...");
+
+
+            for (var i in tweets.statuses)
+            {
+                let tweet = {
+                    "created_at": tweets.statuses[i].created_at,
+                    "id": tweets.statuses[i].id,
+                    "full_text": tweets.statuses[i].full_text,
+                    "user_id": tweets.statuses[i].user.id,
+                    "user_name": tweets.statuses[i].user.name,
+                    "user_location": tweets.statuses[i].user.location,
+                    "user_verified": tweets.statuses[i].user.verified,
+                    "user_profile_image_url": tweets.statuses[i].user.profile_image_url,
+                    "geo": tweets.statuses[i].geo,
+                    "coordinates": tweets.statuses[i].coordinates,
+                    "place": tweets.statuses[i].place,
+                    "checked": 0,
+                    "crime": null
+                }
+
+                mongoController.storeTweets(tweet);
+
+            }
+
+
 	    	res.render('index', {data: tweets.statuses, searchwords: req.body.dbResults, wordCount: wordCount})
 	  	} else
 	  	{
